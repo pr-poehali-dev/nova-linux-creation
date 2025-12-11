@@ -5,7 +5,7 @@ interface BiosScreenProps {
 }
 
 const BiosScreen = ({ onBoot }: BiosScreenProps) => {
-  const [countdown, setCountdown] = useState(3);
+  const [countdown, setCountdown] = useState(15);
   const [showPrompt, setShowPrompt] = useState(true);
 
   useEffect(() => {
