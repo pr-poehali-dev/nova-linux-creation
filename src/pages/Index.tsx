@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Desktop from '@/components/Desktop';
 import Taskbar from '@/components/Taskbar';
 import Window from '@/components/Window';
@@ -6,6 +6,8 @@ import FirefoxBrowser from '@/components/FirefoxBrowser';
 import Store from '@/components/Store';
 import DebianInstaller from '@/components/DebianInstaller';
 import UbuntuInstaller from '@/components/UbuntuInstaller';
+import BiosScreen from '@/components/BiosScreen';
+import DebianOS from '@/components/DebianOS';
 
 export interface WindowState {
   id: string;
@@ -20,6 +22,22 @@ const Index = () => {
   const [windows, setWindows] = useState<WindowState[]>([]);
   const [maxZIndex, setMaxZIndex] = useState(1);
   const [isShuttingDown, setIsShuttingDown] = useState(false);
+  const [showBios, setShowBios] = useState(false);
+  const [currentOS, setCurrentOS] = useState<'novalinux' | 'debian' | null>(null);
+  const [installedDistros, setInstalledDistros] = useState<string[]>([]);
+
+  useEffect(() => {
+    const savedDistros = localStorage.getItem('installedDistros');
+    if (savedDistros) {
+      setInstalledDistros(JSON.parse(savedDistros));
+    }
+    const savedOS = localStorage.getItem('currentOS');
+    if (savedOS === 'debian') {
+      setCurrentOS('debian');
+    } else {
+      setCurrentOS('novalinux');
+    }
+  }, []);
 
   const openWindow = (title: string, component: string) => {
     const existingWindow = windows.find(w => w.title === title);
@@ -68,7 +86,31 @@ const Index = () => {
   const handleReboot = () => {
     setIsShuttingDown(true);
     setTimeout(() => {
-      window.location.reload();
+      setIsShuttingDown(false);
+      setShowBios(true);
+    }, 2000);
+  };
+
+  const handleBiosComplete = () => {
+    setShowBios(false);
+    if (installedDistros.includes('debian')) {
+      setCurrentOS('debian');
+      localStorage.setItem('currentOS', 'debian');
+    } else {
+      setCurrentOS('novalinux');
+    }
+  };
+
+  const handleDebianInstalled = () => {
+    const newDistros = [...installedDistros, 'debian'];
+    setInstalledDistros(newDistros);
+    localStorage.setItem('installedDistros', JSON.stringify(newDistros));
+    setTimeout(() => {
+      setIsShuttingDown(true);
+      setTimeout(() => {
+        setIsShuttingDown(false);
+        setShowBios(true);
+      }, 2000);
     }, 2000);
   };
 
@@ -85,13 +127,24 @@ const Index = () => {
           }
         }} />;
       case 'debian-installer':
-        return <DebianInstaller />;
+        return <DebianInstaller onInstallComplete={handleDebianInstalled} />;
       case 'ubuntu-installer':
         return <UbuntuInstaller />;
       default:
         return <div className="p-4 text-foreground">Unknown application</div>;
     }
   };
+
+  if (showBios) {
+    return <BiosScreen onBoot={handleBiosComplete} />;
+  }
+
+  if (currentOS === 'debian') {
+    return <DebianOS onShutdown={() => {
+      setCurrentOS('novalinux');
+      localStorage.setItem('currentOS', 'novalinux');
+    }} />;
+  }
 
   if (isShuttingDown) {
     return (

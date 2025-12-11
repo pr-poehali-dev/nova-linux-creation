@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 
-const DebianInstaller = () => {
+interface DebianInstallerProps {
+  onInstallComplete?: () => void;
+}
+
+const DebianInstaller = ({ onInstallComplete }: DebianInstallerProps) => {
   const [stage, setStage] = useState<'warning' | 'loading' | 'language' | 'installing' | 'complete'>('warning');
   const [progress, setProgress] = useState(0);
   const [selectedLanguage, setSelectedLanguage] = useState('');
@@ -27,7 +31,12 @@ const DebianInstaller = () => {
         setProgress((prev) => {
           if (prev >= 100) {
             clearInterval(timer);
-            setTimeout(() => setStage('complete'), 500);
+            setTimeout(() => {
+              setStage('complete');
+              if (onInstallComplete) {
+                setTimeout(() => onInstallComplete(), 2000);
+              }
+            }, 500);
             return 100;
           }
           return prev + 1;
