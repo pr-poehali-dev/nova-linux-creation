@@ -1,12 +1,133 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import Desktop from '@/components/Desktop';
+import Taskbar from '@/components/Taskbar';
+import Window from '@/components/Window';
+import FirefoxBrowser from '@/components/FirefoxBrowser';
+import Store from '@/components/Store';
+import DebianInstaller from '@/components/DebianInstaller';
+import UbuntuInstaller from '@/components/UbuntuInstaller';
+
+export interface WindowState {
+  id: string;
+  title: string;
+  component: string;
+  isOpen: boolean;
+  position: { x: number; y: number };
+  zIndex: number;
+}
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
+  const [windows, setWindows] = useState<WindowState[]>([]);
+  const [maxZIndex, setMaxZIndex] = useState(1);
+  const [isShuttingDown, setIsShuttingDown] = useState(false);
+
+  const openWindow = (title: string, component: string) => {
+    const existingWindow = windows.find(w => w.title === title);
+    if (existingWindow) {
+      bringToFront(existingWindow.id);
+      return;
+    }
+
+    const newWindow: WindowState = {
+      id: `window-${Date.now()}`,
+      title,
+      component,
+      isOpen: true,
+      position: { x: 100 + windows.length * 30, y: 80 + windows.length * 30 },
+      zIndex: maxZIndex + 1,
+    };
+    setWindows([...windows, newWindow]);
+    setMaxZIndex(maxZIndex + 1);
+  };
+
+  const closeWindow = (id: string) => {
+    setWindows(windows.filter(w => w.id !== id));
+  };
+
+  const bringToFront = (id: string) => {
+    const newZIndex = maxZIndex + 1;
+    setWindows(windows.map(w => 
+      w.id === id ? { ...w, zIndex: newZIndex } : w
+    ));
+    setMaxZIndex(newZIndex);
+  };
+
+  const updateWindowPosition = (id: string, position: { x: number; y: number }) => {
+    setWindows(windows.map(w => 
+      w.id === id ? { ...w, position } : w
+    ));
+  };
+
+  const handleShutdown = () => {
+    setIsShuttingDown(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
+  };
+
+  const handleReboot = () => {
+    setIsShuttingDown(true);
+    setTimeout(() => {
+      window.location.reload();
+    }, 2000);
+  };
+
+  const renderWindowContent = (component: string) => {
+    switch (component) {
+      case 'firefox':
+        return <FirefoxBrowser />;
+      case 'store':
+        return <Store onInstall={(distro) => {
+          if (distro === 'debian') {
+            openWindow('Debian Installer', 'debian-installer');
+          } else if (distro === 'ubuntu') {
+            openWindow('Ubuntu Installer', 'ubuntu-installer');
+          }
+        }} />;
+      case 'debian-installer':
+        return <DebianInstaller />;
+      case 'ubuntu-installer':
+        return <UbuntuInstaller />;
+      default:
+        return <div className="p-4 text-foreground">Unknown application</div>;
+    }
+  };
+
+  if (isShuttingDown) {
+    return (
+      <div className="h-screen w-screen bg-background flex items-center justify-center">
+        <div className="text-center animate-fade-in">
+          <div className="text-4xl font-bold text-primary mb-4 animate-glow">NovaLinux</div>
+          <div className="text-foreground text-lg">Перезагрузка системы...</div>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-background relative">
+      <Desktop onOpenApp={openWindow} />
+      
+      {windows.map(window => (
+        <Window
+          key={window.id}
+          id={window.id}
+          title={window.title}
+          position={window.position}
+          zIndex={window.zIndex}
+          onClose={() => closeWindow(window.id)}
+          onFocus={() => bringToFront(window.id)}
+          onMove={(position) => updateWindowPosition(window.id, position)}
+        >
+          {renderWindowContent(window.component)}
+        </Window>
+      ))}
+
+      <Taskbar 
+        onOpenApp={openWindow}
+        onShutdown={handleShutdown}
+        onReboot={handleReboot}
+      />
     </div>
   );
 };
